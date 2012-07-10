@@ -1,0 +1,7 @@
+<module rename-to="rubiks">  
+  <inherits name="com.google.gwt.user.User"/>
+  <inherits name="com.google.gwt.user.Debug"/>
+  <inherits name="com.sjl.gwtutil.GwtUtil"/>
+  <entry-point class="com.sjl.rubiks.client.Rubiks" />    
+  <!-- add-linker name="xs" / -->
+</module>

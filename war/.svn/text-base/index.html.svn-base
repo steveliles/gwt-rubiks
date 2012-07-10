@@ -1,0 +1,84 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Cube Test</title>
+  </head>
+  <body>
+    
+    <div>Hello</div>
+    
+    <div><div>
+    <div class="rubiks" style="width:150px; height:150px; float:left;">
+      { 
+        "rubik-cube": { 
+          "rotate-x":35, 
+          "rotate-y":35,
+          "rotate-z":0 
+        }, 
+        "camera":{} 
+      }
+    </div>
+    </div</div>
+    
+    <div class="rubiks" style="width:150px; height:150px; float:left;">
+      { 
+        "rubik-cube": { 
+          "rotate-x":45, 
+          "rotate-y":135,
+          "rotate-z":0 
+        }, 
+        "camera":{} 
+      }
+    </div>
+    
+    <div class="rubiks" style="width:150px; height:150px; float:left">
+      { 
+        "rubik-cube": { 
+          "rotate-x":45, 
+          "rotate-y":215,
+          "rotate-z":0 
+        }, 
+        "camera":{} 
+      }
+    </div>
+    
+    <div style="clear:both"></div>
+    
+    <div class="rubiks" style="width:150px; height:150px; float:left;">
+      { 
+        "rubik-cube": { 
+          "rotate-x":135, 
+          "rotate-y":35,
+          "rotate-z":0 
+        }, 
+        "camera":{} 
+      }
+    </div>
+    
+    <div class="rubiks" style="width:150px; height:150px; float:left;">
+      { 
+        "rubik-cube": { 
+          "rotate-x":95, 
+          "rotate-y":125,
+          "rotate-z":0 
+        }, 
+        "camera":{} 
+      }
+    </div>
+    
+    <div class="rubiks" style="width:150px; height:150px; float:left;">
+      { 
+        "rubik-cube": { 
+          "rotate-x":25, 
+          "rotate-y":-25,
+          "rotate-z":135 
+        }, 
+        "camera":{} 
+      }
+    </div>
+    
+    <script type="text/javascript" language="javascript" src="rubiks/rubiks.nocache.js?cache=${build.timestamp}"></script>
+    <iframe src="javascript:''" id="__gwt_historyFrame" style="position:absolute;width:0;height:0;border:0"></iframe>
+  </body>
+</html>

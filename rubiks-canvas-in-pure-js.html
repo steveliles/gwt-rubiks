@@ -1,0 +1,340 @@
+<html>
+  <head>
+    <title>rubiks</title>
+    <style>
+      #diagram { border:1px solid blue; }
+    </style>
+    <script type="text/javascript">
+
+      var R='#f00'; var G='#0f0'; var B='#00f';
+      var W='#fff'; var Y='#ff0'; var O='#f96';
+
+      Point = function(x,y,z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;                
+        this.minus = function(point) {
+          return new Point(this.x-point.x, this.y-point.y, this.z-point.z);
+        }
+        this.plus = function(point) {
+          return new Point(this.x+point.x, this.y+point.y, this.z+point.z);
+        }
+        this.distance = function(point) {
+          return Math.sqrt(
+            ((this.x-point.x)*(this.x-point.x))+
+            ((this.y-point.y)*(this.y-point.y))+
+            ((this.z-point.z)*(this.z-point.z))
+          );
+        }
+        this.transform = function(matrix) {       
+          var coords = multiply([[this.x, this.y, this.z]], matrix)[0];
+          return new Point(coords[0], coords[1], coords[2]);
+        }
+        this.screenXY = function(camera) {
+          var p = this.minus(camera.origin);
+          var result = new Point(p._screenX(camera), p._screenY(camera), 0);
+          return result;
+        }
+        this._screenX = function(camera) {
+          return -(this.x*camera.origin.z)/this.z;
+        }
+        this._screenY = function(camera) {
+          return (this.y*camera.origin.z)/this.z;
+        }
+        this.toString = function() {
+          return "[" + this.x + "," + this.y + "," + this.z + "]";
+        }
+      }
+
+      Face = function(origin,colour,side,c1,c2,c3,c4) {
+        this.c1=c1; this.c2=c2; this.c3=c3; this.c4=c4;
+        this.origin=origin;
+        this.colour=colour;
+        this.side=side;
+        this.init = function(origin,side) {
+          if(!this.c1) {
+            var h=side/2;
+            this.c1 = new Point(origin.x-h,origin.y-h,origin.z+h);
+            this.c2 = new Point(origin.x+h,origin.y-h,origin.z+h);
+            this.c3 = new Point(origin.x+h,origin.y+h,origin.z+h);
+            this.c4 = new Point(origin.x-h,origin.y+h,origin.z+h);
+          }
+        }
+        this.transform = function(matrix) {
+          return new Face(
+            this.origin.transform(matrix),
+            this.colour, this.side,
+            this.c1.transform(matrix),
+            this.c2.transform(matrix),
+            this.c3.transform(matrix),
+            this.c4.transform(matrix)
+          );
+        }
+        this.translate = function(vector) {
+          return new Face(
+            this.origin.plus(vector),
+            this.colour, this.side,
+            this.c1.plus(vector),
+            this.c2.plus(vector),
+            this.c3.plus(vector),
+            this.c4.plus(vector)
+          );
+        }
+        this.draw = function(ctx,camera) {
+          var c1s = this.c1.screenXY(camera);
+          var c2s = this.c2.screenXY(camera);
+          var c3s = this.c3.screenXY(camera);
+          var c4s = this.c4.screenXY(camera);
+          ctx.beginPath();
+          ctx.strokeStyle = '#000'; 
+          ctx.lineWidth = 2;
+          ctx.fillStyle=this.colour;          
+          ctx.moveTo(c1s.x, c1s.y);
+          ctx.lineTo(c2s.x, c2s.y);
+          ctx.lineTo(c3s.x, c3s.y);
+          ctx.lineTo(c4s.x, c4s.y);
+          ctx.lineTo(c1s.x, c1s.y);
+          ctx.fill();
+          ctx.stroke();          
+        }
+        this.distance = function(point) {
+          var mycentre = this.origin.plus(this.c1.minus(this.origin).plus(this.c2.minus(this.origin).plus(this.c3.minus(this.origin).plus(this.c4.minus(origin)))));
+          return mycentre.distance(point);
+        }
+        this.toString = function() {
+          return this.c1 + "," + this.c2 + "," + this.c3 + "," + this.c4;
+        }
+        this.init(origin,side);
+      }
+
+      Cube = function(origin,side) {        
+        this.draw = function(ctx,camera) {
+          // sort faces into increasing z-order so that
+          // when we draw them the nearest get drawn on top
+          this.faces = sort(this.faces,camera.origin);
+          for (var face in this.faces) {
+            this.faces[face].draw(ctx,camera);
+          } 
+        }
+        this.translate = function(vector) {
+          for (var face in this.faces) {
+            this.faces[face] = this.faces[face].translate(vector);
+          }
+        }
+        this.transform = function(matrix) {
+          this.origin = this.origin.transform(matrix);
+          for (var face in this.faces) {
+            this.faces[face] = this.faces[face].transform(matrix);
+          }
+        },
+        this.distance = function(point) {
+          return point.distance(this.origin);
+        }
+        this.origin = origin;
+        this.faces=[];
+        this.faces[0]=new Face(new Point(0,0,0),'#f00',side).transform(newRotateMatrix(90,90,0));
+        this.faces[1]=new Face(new Point(0,0,0),'#0f0',side).transform(newRotateMatrix(0,180,0));
+        this.faces[2]=new Face(new Point(0,0,0),'#00f',side).transform(newRotateMatrix(0,90,0));
+        this.faces[3]=new Face(new Point(0,0,0),'#fff',side).transform(newRotateMatrix(0,0,0));
+        this.faces[4]=new Face(new Point(0,0,0),'#ff0',side).transform(newRotateMatrix(-90,0,0));
+        this.faces[5]=new Face(new Point(0,0,0),'#f90',side).transform(newRotateMatrix(0,-90,0));
+        
+        this.translate(origin);
+      }
+
+      Rubik = function(origin,segment) {
+        this.origin = origin;
+        this.front = new Point(this.origin.x,this.origin.y,this.origin.z-segment*3);
+        this.top = new Point(this.origin.x,this.origin.y+segment*3,this.origin.z);
+        this.right = new Point(this.origin.x+segment*3,this.origin.y,this.origin.z);        
+        this.segment = segment;
+        this.pieces = [];
+        this.centres = [];
+        for (var z=-1; z<=1; z++) {
+          for (var x=-1; x<=1; x++) {
+            for (var y=-1; y<=1; y++) {                           
+              this.pieces[this.pieces.length] = new Cube(new Point(origin.x+(x*segment), origin.y+(y*segment), origin.z+(z*segment)), segment);
+              if (Math.abs(x)+Math.abs(y)+Math.abs(z)==1) {
+                this.centres[this.centres.length]=this.pieces[this.pieces.length-1];
+              }
+            }
+          }
+        }
+        this.transform = function(matrix) {
+          this.origin=this.origin.transform(matrix);
+          this.top=this.top.transform(matrix);
+          this.front=this.front.transform(matrix);
+          this.right=this.right.transform(matrix);
+          for (var piece in this.pieces) {
+            this.pieces[piece].transform(matrix);
+          }
+        }
+        this.draw = function(ctx,camera) {          
+          this.pieces = sort(this.pieces,camera.origin);
+          for (var piece in this.pieces) {
+            this.pieces[piece].draw(ctx,camera);
+          }          
+          this.drawAxis(ctx,camera);
+        }
+        this.drawAxis = function(ctx,camera) { 
+          ctx.beginPath();
+          ctx.strokeStyle='#600';
+          var _os = this.origin.screenXY(camera);
+          var _ts = this.top.screenXY(camera);
+          var _rs = this.right.screenXY(camera);
+          var _fs = this.front.screenXY(camera);        
+          ctx.moveTo(_os.x,_os.y);
+          ctx.lineTo(_ts.x,_ts.y);
+          ctx.strokeText("t",_ts.x,_ts.y);
+          ctx.moveTo(_os.x,_os.y);
+          ctx.lineTo(_fs.x,_fs.y);
+          ctx.strokeText("f",_fs.x,_fs.y);
+          ctx.moveTo(_os.x,_os.y);
+          ctx.lineTo(_rs.x,_rs.y); 
+          ctx.strokeText("r",_rs.x,_rs.y);         
+          ctx.stroke();
+        }
+        this.getVisibleCentres = function(camera,ctx) {
+          return sort(this.centres,camera.origin).slice(3);
+        }
+        this.getTopFace = function(camera,ctx) {
+          var cubes = this.getNearestFace(this.top);
+          return cubes[cubes.length-1];
+        }
+        this.getFrontFace = function(camera,ctx) {
+          var cubes = this.getNearestFace(this.front);
+          return cubes[cubes.length-1];
+        }
+        this.getRightFace = function(camera,ctx) {
+          var cubes = this.getNearestFace(this.right);
+          return cubes[cubes.length-1];
+        }
+        this.getNearestFace = function(point) {
+          var cubes = sort(this.pieces,point);
+          cubes.shift(18);
+          return cubes;
+        }
+      }
+
+      sort = function(array,point) {
+        var less=[], greater=[];
+        if (array.length <= 1)
+          return array;
+        var pivotIndex = Math.floor(Math.random()*array.length);
+        var pivot = array[pivotIndex];
+        var values = [];
+        for (var i=0; i<array.length; i++) {
+          if (i!=pivotIndex) {
+            values[values.length]=array[i];
+          }
+        }
+        var d=pivot.distance(point);
+        for (var v in values) {
+          if (values[v].distance(point)>d) {
+            less[less.length]=values[v];
+          } else { 
+            greater[greater.length]=values[v];
+          }
+        }
+        less = sort(less,point);
+        less[less.length]=pivot;
+        return less.concat(sort(greater,point));
+      }
+       
+      radians = function(anAngle) {
+        return (2.0*Math.PI)/(360/anAngle);
+      }
+
+      sin = function(anAngle) {
+        return Math.sin(radians(anAngle));
+      }
+
+      cos = function(anAngle) {
+        return Math.cos(radians(anAngle));
+      }
+ 
+      multiply = function(m1,m2) {
+        var result = [];
+        for (i=0;i<m1.length;i++) {    
+          result[i]=[];
+          for (j=0;j<m2.length;j++) {
+            result[i][j]=(m1[i][0]*m2[0][j]) + (m1[i][1]*m2[1][j]) + (m1[i][2]*m2[2][j]);
+          }
+        }
+        return result;
+      }
+
+      newRotateMatrix = function(xa,ya,za) {
+        var x = [
+          [1, 0, 0],
+          [0, cos(xa), -sin(xa)],
+          [0, sin(xa), cos(xa)]
+        ];
+        var y = [
+          [cos(ya), 0, sin(ya)],
+          [0, 1, 0],
+          [-sin(ya), 0, cos(ya)]
+        ];
+        var z = [
+          [cos(za), -sin(za), 0],
+          [sin(za), cos(za), 0],
+          [0, 0, 1]
+        ];        
+        return multiply(x, multiply(y, z));
+      }
+
+var _rubik;
+var _matrix;
+var ctx;
+var camera;
+      init = function() {
+        camera = { origin:new Point(0,0,-100) };
+        ctx = document.getElementById("canvas").getContext("2d");
+        ctx.translate(100,100);
+        //ctx.rotate(radians(180));
+
+var debug=false;
+if (!debug) {
+        _rubik = new Rubik(new Point(0,0,0),20);
+        _rubik.transform(newRotateMatrix(45,-40,0));
+        _rubik.draw(ctx,camera);
+_matrix = newRotateMatrix(1,0,0);
+       // animate();
+alert("");
+        _rubik.getTopFace(camera,ctx).draw(ctx,camera);
+alert("");
+        _rubik.getFrontFace(camera,ctx).draw(ctx,camera);
+alert("");
+        _rubik.getRightFace(camera,ctx).draw(ctx,camera);
+            
+} else {
+  var _c = new Cube(new Point(30,30,0),20);
+  _c.transform(newRotateMatrix(0,0,0));
+  _c.draw(ctx,camera);
+}
+
+ctx.translate(-100, -100);                
+      }
+
+      animate = function() {
+        _rubik.transform(_matrix);
+ctx.clearRect(0,0,500,500);
+ctx.translate(100,100);        
+        _rubik.draw(ctx,camera);
+ctx.translate(-100, -100);        
+        setTimeout('animate()',250);
+      }
+            
+      log = function(msg) {
+        var _log = document.getElementById("log");
+        _log.innerText = msg;
+      }
+
+    </script>
+  <body onload="init();">
+    <h1>Diagram coming up...</h1>
+    <div id="log"></div>
+    <canvas id="canvas" width="1000" height="600"></canvas>
+  </body>
+</html>
+

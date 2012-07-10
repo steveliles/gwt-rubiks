@@ -1,0 +1,199 @@
+<html>
+  <head>
+    <title>rubiks</title>
+    <style>
+      #diagram { border:1px solid blue; }
+    </style>
+    <script type="text/javascript">
+
+      function Point(x,y,z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.getX2d = function(aCameraPos) {
+          return (this.x-aCameraPos.x);//*(this.z/aCameraPos.z);
+        }
+        this.getY2d = function(aCameraPos) {
+          return (this.y-aCameraPos.y);//*(this.z/aCameraPos.z);
+        }
+        this.toString = function() {
+          return "[" + this.x + "," + this.y + "," + this.z + "]";
+        }
+        this.rotate = function(anOrigin,aMatrix) {
+          // translate relative to origin
+          var tx = anOrigin.x-this.x;
+          var ty = anOrigin.y-this.y;
+          var tz = anOrigin.z-this.z;
+
+          // rotate          
+          this.x = (tx * aMatrix[0][0]) + (ty * aMatrix[1][0]) + (tz * aMatrix[2][0]);
+          this.y = (tx * aMatrix[0][1]) + (ty * aMatrix[1][1]) + (tz * aMatrix[2][1]);
+          this.z = (tx * aMatrix[0][2]) + (ty * aMatrix[1][2]) + (tz * aMatrix[2][2]);
+
+          // translate back relative to origin
+          this.x = anOrigin.x-tx;
+          this.y = anOrigin.y-ty;
+          this.z = anOrigin.z-tz;
+        }
+      }
+
+      function Tile(aCentre,aSize,aColour) {
+        var _offset = aSize/2;
+        var _x1 = aCentre.x-_offset;
+        var _x2 = aCentre.x+_offset;
+        var _y1 = aCentre.y-_offset;
+        var _y2 = aCentre.y+_offset;
+        this.tl = new Point(_x1,_y1,aCentre.z);
+        this.tr = new Point(_x2,_y1,aCentre.z);       
+        this.br = new Point(_x2,_y2,aCentre.z);
+        this.bl = new Point(_x1,_y2,aCentre.z);
+        this.colour = aColour;
+
+        this.rotate = function(anOrigin,aMatrix) {
+          this.tl.rotate(anOrigin,aMatrix);
+          this.tr.rotate(anOrigin,aMatrix);
+          this.br.rotate(anOrigin,aMatrix);
+          this.bl.rotate(anOrigin,aMatrix);
+        }
+        this.draw = function(aCtx, aCameraPos) {
+          aCtx.beginPath();
+          aCtx.moveTo(this.tl.getX2d(aCameraPos), this.tl.getY2d(aCameraPos));
+          aCtx.lineTo(this.tr.getX2d(aCameraPos), this.tr.getY2d(aCameraPos));
+          aCtx.lineTo(this.br.getX2d(aCameraPos), this.br.getY2d(aCameraPos));
+          aCtx.lineTo(this.bl.getX2d(aCameraPos), this.bl.getY2d(aCameraPos));
+          aCtx.lineTo(this.tl.getX2d(aCameraPos), this.tl.getY2d(aCameraPos));
+          aCtx.fillStyle = this.colour;
+          aCtx.fill();
+          aCtx.stroke();
+        },
+        this.toString = function() {
+          return "[" + this.tl + "," + this.tr + "," + this.br + "," + this.bl + "]";
+        }
+//alert(this.toString());
+//alert(this.tl.getX2d(new Point(10,10,50)));
+      }
+      
+      function Face(aCubeCentre, aTileSize, aColour) {
+        this.centre = new Point(
+          aCubeCentre.x,
+          aCubeCentre.y,
+          aCubeCentre.z - (1.5*aTileSize)
+        );
+        this.tiles = [];
+        this.init = function(aTileSize, aColour) {
+          var _offset = new Point(
+            this.centre.x+(aTileSize*1.5),
+            this.centre.y+(aTileSize*1.5),
+            this.centre.z+(aTileSize*1.5)
+          );
+          // make 9 tiles
+          for (x=0; x<3; x++) {
+            for (y=0; y<3; y++) {
+              this.tiles[this.tiles.length] = new Tile(_offset,x,y,aTileSize,aColour);
+            }
+          }
+        }
+        this.rotate = function(anOrigin,aMatrix) {
+          for (var tile in this.tiles) {
+            this.tiles[tile].rotate(anOrigin,aMatrix);
+          }
+        }
+        this.draw = function(aCtx, aCameraPos) {
+          for (var tile in this.tiles) {
+            this.tiles[tile].draw(aCtx, aCameraPos);
+          }
+        }
+        this.init(aTileSize,aColour);
+      }
+
+      function Cube(aCentre, aTileSize) {
+        this.centre = aCentre;
+        this.init = function(aTileSize) {
+          this.front = new Face(this.centre, aTileSize, '#f00');
+          this.top = new Face(this.centre, aTileSize, '#00f');
+          this.right = new Face(this.centre, aTileSize, '#ff0');
+          // rotate front face 45 degrees ccw around x axis, 45 degrees cw around y axis
+ //         this.front.rotate(this.centre, newRotateXMatrix(-45));
+//          this.front.rotate(this.centre, newRotateYMatrix(45));          
+          // rotate right face 45 degrees ccw around x axis, 45 degrees ccw around y axis
+          //this.right.rotate(this.centre, newRotateXMatrix(-45));
+          this.right.rotate(this.centre, newRotateYMatrix(45));
+          // rotate top face 45 degrees cw around x axis, 45 degrees cw around y axis 
+      //    this.top.rotate(this.centre, newRotateXMatrix(-45));
+        //  this.top.rotate(this.centre, newRotateYMatrix(45));
+        }
+        this.draw = function(aCtx, aCameraPos) {
+          this.front.draw(aCtx, aCameraPos);
+          this.top.draw(aCtx, aCameraPos);
+          this.right.draw(aCtx, aCameraPos);
+        }
+        this.init(aTileSize);
+      }
+
+      newRotateXMatrix = function(anAngle) {
+        return [
+          [1,0,0],
+          [0,Math.cos(anAngle),-Math.sin(anAngle)],
+          [0,Math.sin(anAngle),Math.cos(anAngle)]
+        ];
+      }
+
+      newRotateYMatrix = function(anAngle) {
+        return [
+          [Math.cos(anAngle),0,Math.sin(anAngle)],
+          [0,1,0],
+          [-Math.sin(anAngle),0,Math.cos(anAngle)]
+        ];
+      }
+
+      newRotateZMatrix = function(anAngle) {
+        return [
+          [Math.cos(anAngle),-Math.sin(anAngle),0],
+          [Math.sin(anAngle),Math.cos(anAngle),0],
+          [0,0,1]
+        ];
+      }
+
+      init = function() {
+        var ctx = document.getElementById("canvas").getContext("2d");
+        ctx.translate(200,200);
+        ctx.strokeStyle = '#000'; 
+        ctx.lineWidth = 2;
+
+        var camera = new Point(0,0,50);
+        //var cube = new Cube(new Point(0,0,50), 30);
+        //cube.draw(ctx, camera);
+
+        var _t = new Tile(new Point(0,0,-20),10,'#f96');
+        _t.draw(ctx,new Point(0,0,50));
+        _t.rotate(new Point(0,0,-20), newRotateZMatrix(((2*3.142)/360)*45));
+        _t.draw(ctx,new Point(0,0,50));
+
+        ctx.translate(-200,-200);
+      }
+
+      newRotateMatrix = function(xa,ya,za) {
+        var _x = [
+          [1,0,0],
+          [0,cos(xa),-1*sin(xa)],
+          [0,sin(xa),cos(xa)]
+        ];
+        var _y = [
+          [cos(ya),0,sin(ya)],
+          [0,1,0],
+          [-1*sin(ya),0,cos(ya)]
+        ];
+        var _z = [
+          [cos(za),-1*sin(za),0],
+          [sin(za),cos(za),0],
+          [0,0,1]
+        ];        
+        return multiply(_x,multiply(_y,_z));
+      }
+    </script>
+  <body onload="init();">
+    <h1>Diagram coming up...</h1>
+    <canvas id="canvas" width="1000" height="600"></canvas>
+  </body>
+</html>
+
