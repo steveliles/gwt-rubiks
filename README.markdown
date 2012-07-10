@@ -1,0 +1,3 @@
+## 3d Rubiks using html canvas
+
+This is the code for a 3d rendered rubiks cube using the html canvas. The [initial version](https://github.com/steveliles/gwt-rubiks/blob/master/rubiks-canvas-in-pure-js.html) is "pure" javascript, the remainder of this project is the GWT version - a more complete implementation, with a bit of description in [this blog post](http://steveliles.github.com/3d_graphics_using_the_html5_canvas.html).
